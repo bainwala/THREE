@@ -1,50 +1,89 @@
 var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        var planet;
-        var renderer = new THREE.WebGLRenderer({alpha:true});
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
 
-        window.addEventListener('resize', function () { 
-            var width = window.innerWidth;
-            var height = window.innerHeight;
-            renderer.setSize(width, height);
-            camera.aspect = width/height;
-            camera.updateProjectionMatrix();
-         })
+//Create a new perspective camera
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0,0,13);
 
-        //Create the Shape
+//Create the WebGL renderer and set its size to the full dimensions of the screen.
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
 
-        const ambient = new THREE.AmbientLight(0x404040, 3);
-        scene.add(ambient);
+//Add the renderer canvas to the DOM.
+document.body.appendChild(renderer.domElement);
 
-        var loader = new THREE.GLTFLoader();
+//Add Orbit Controls
+var orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 
-        loader.load("/jupiter/scene.gltf", function (gltf) { 
-            scene.add(gltf.scene);
-            planet = gltf.scene.children[0];
-            animate();
-         })
 
-        var geometry = new THREE.BoxGeometry(1,1,1);
+//Create a new ambient light
+var light = new THREE.AmbientLight( 0x888888 )
+scene.add( light )
 
-        var material = new THREE.MeshBasicMaterial({color: 0xFFFFFF, wireframe: false});
+//Create a new directional light
+var light = new THREE.DirectionalLight( 0xfdfcf0, 1 )
+light.position.set(20,10,20)
+scene.add( light )
 
-        var cube = new THREE.Mesh(geometry, material)
+//Create geometry and material
+var earthGeometry = new THREE.SphereGeometry( 5, 50, 50 );
+var earthMaterial = new THREE.MeshPhongMaterial({
+    map: new THREE.ImageUtils.loadTexture("./Images/2k_neptune.jpg"),
+    color: 0xaaaaaa,
+    specular: 0x333333,
+    shininess: 25
+});
 
-        //scene.add(cube);
+//Build earth mesh using our geometry and material
+var earth = new THREE.Mesh(earthGeometry, earthMaterial);
 
-        camera.position.z = 6;
+//add the earth mesh to the scene
+scene.add(earth);
 
-        var update = function() {
-            planet.rotation.z += 0.001;
-            planet.rotation.y += 0.0005;
-        };
+//Stars
+var starGeometry = new THREE.SphereGeometry(500, 50, 50);
+var starMaterial = new THREE.MeshPhongMaterial({
+    map: new THREE.ImageUtils.loadTexture("/Images/2k_stars.jpg"),
+    side: THREE.DoubleSide,
+    shininess: 0
+});
+var starField = new THREE.Mesh(starGeometry, starMaterial);
+scene.add(starField);
 
-        var animate = function() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-            update()
-        }
 
-        
+//Camera vector
+var earthVec = new THREE.Vector3(0,0,0);
+
+var r = 35;
+var theta = 0;
+var dTheta = 2 * Math.PI / 1000;
+
+var dx = .01;
+var dy = -.01;
+var dz = -.05;
+
+
+
+//Render loop
+var render = function() {
+  earth.rotation.y += .0009;
+  
+  //Flyby
+  if (camera.position.z < 0) {
+    dx *= -1;
+  }
+  camera.position.x += dx;
+  camera.position.y += dy;
+  camera.position.z += dz;
+
+  camera.lookAt(earthVec);
+
+  //Flyby reset
+  if (camera.position.z < -100) {
+    camera.position.set(0,35,70);
+  }
+
+  camera.lookAt(earthVec);
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+};
+render();
